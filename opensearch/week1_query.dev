@@ -1,0 +1,112 @@
+# find the department = computers
+GET bbuy_products/_search
+{
+  "size": 0,
+  "aggs": {
+    "CATEGORY": {
+      "terms": {
+        "field": "department.keyword"
+      }
+    }
+  },
+  "_source": ["productId", "name", "shortDescription", "longDescription", "department", "salesRankShortTerm",  "salesRankMediumTerm", "salesRankLongTerm", "regularPrice", "categoryPath"]
+}
+
+# find count for missing images
+GET bbuy_products/_search
+{
+  "size": 0,
+  "aggs": {
+    "missing_image":{
+      "missing": {"field":"image.keyword"}
+    }
+  },
+  "_source": ["productId", "name", "shortDescription", "longDescription", "department", "salesRankShortTerm",  "salesRankMediumTerm", "salesRankLongTerm", "regularPrice", "categoryPath", "image"]
+}
+
+#find ipad 2 in queries
+#### Iter 1 #########
+GET bbuy_products/_search
+{
+ "size": 10,
+  "query": {
+    
+      "bool":{
+        "must":[
+            {"query_string": {
+                "query": "\"ipad 2\"",
+                "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"]
+            }}
+        ]
+        
+      }
+  },
+  "_source": ["productId", "name", "shortDescription", "longDescription", "department", "salesRankShortTerm",  "salesRankMediumTerm", "salesRankLongTerm", "regularPrice", "categoryPath"]
+}
+
+#### Iter 2 #########
+GET bbuy_products/_search
+{
+ "size": 10,
+  "query": {
+       
+    "boosting": {
+      "positive": {    
+        
+          "query_string": {
+          "query":  "ipad 2",
+          "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"]
+        }
+      },
+      "negative": {
+          "query_string": {
+          "query": "Compatible with App iPad",
+          "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"]
+      }},
+      "negative_boost": 0.2
+    }
+  },
+  "_source": ["productId", "name", "shortDescription", "longDescription", "department", "salesRankShortTerm",  "salesRankMediumTerm", "salesRankLongTerm", "regularPrice", "categoryPath"]
+}
+
+#### Iter 3 #########
+GET bbuy_products/_search
+{
+ "size": 10,
+  "query": {
+      "function_score": {
+        "query": {
+           "query_string": {
+                    "query": "\"ipad 2\"",
+                    "fields": ["name^1000", "shortDescription^50", "longDescription^10", "department"]
+            }
+        },
+        "boost_mode": "multiply",
+        "score_mode": "avg",
+        "functions": [
+                    {
+            "field_value_factor": {
+              "field": "salesRankShortTerm",
+              "missing": 100000000,
+              "modifier": "reciprocal"
+            }
+          },
+          {
+            "field_value_factor": {
+              "field": "salesRankMediumTerm",
+              "missing": 100000000,
+              "modifier": "reciprocal"
+            }
+          },
+          {
+            "field_value_factor": {
+              "field": "salesRankLongTerm",
+              "missing": 100000000,
+              "modifier": "reciprocal"
+            }
+          }
+        ]
+      }
+
+  },
+  "_source": ["productId", "name", "shortDescription", "longDescription", "department", "salesRankShortTerm",  "salesRankMediumTerm", "salesRankLongTerm", "regularPrice"]
